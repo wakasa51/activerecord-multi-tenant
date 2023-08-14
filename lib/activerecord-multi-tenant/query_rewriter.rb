@@ -287,7 +287,6 @@ end
 
 require 'active_record/connection_adapters/abstract_adapter'
 ActiveRecord::ConnectionAdapters::AbstractAdapter.prepend(MultiTenant::DatabaseStatements)
-ActiveRecord::Core.prepend(MultiTenant::ReadOnlyMode)
 
 Arel::Visitors::ToSql.include(MultiTenant::TenantValueVisitor)
 

@@ -14,6 +14,7 @@ module MultiTenant
     # primary_key - returns the primary key for the model
     #
     def multi_tenant(tenant_name, options = {})
+      prepend(MultiTenant::ReadOnlyMode)
       if to_s.underscore.to_sym == tenant_name || (!table_name.nil? && table_name.singularize.to_sym == tenant_name)
         unless MultiTenant.with_write_only_mode_enabled?
           # This is the tenant model itself. Workaround for https://github.com/citusdata/citus/issues/687

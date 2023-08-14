@@ -141,6 +141,9 @@ module MultiTenant
   end
 
   def self.with_read_multiple(tenants, &block)
+    raise 'tenants must be Enumerable' unless tenants.is_a?(Enumerable)
+    raise 'Elements of tenants must be present' if tenants.blank? || tenants.any?(&:blank?)
+
     begin
       self.current_multiple_tenants = tenants
       block.call

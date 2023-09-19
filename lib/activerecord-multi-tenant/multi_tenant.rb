@@ -3,6 +3,7 @@ require 'active_support/current_attributes'
 module MultiTenant
   class Current < ::ActiveSupport::CurrentAttributes
     attribute :tenant
+    attribute :multiple_tenants
   end
 
   def self.tenant_klass_defined?(tenant_name, options = {})
@@ -36,6 +37,11 @@ module MultiTenant
 
   def self.with_write_only_mode_enabled?
     @@enable_write_only_mode ||= false
+  end
+
+  # Multiple tenants read-only Mode
+  def self.with_multiple_tenants_read_only_mode_enabled?
+    Current.multiple_tenants.present?
   end
 
   # Registry that maps table names to models (used by the query rewriter)
@@ -101,6 +107,15 @@ module MultiTenant
     self.current_tenant = klass.find(MultiTenant.current_tenant_id)
   end
 
+  def self.current_multiple_tenants=(tenants)
+    Current.multiple_tenants = tenants
+  end
+  private_class_method :current_multiple_tenants=
+
+  def self.current_multiple_tenants
+    Current.multiple_tenants
+  end
+
   def self.with(tenant, &block)
     return block.call if current_tenant == tenant
 
@@ -122,6 +137,18 @@ module MultiTenant
       block.call
     ensure
       self.current_tenant = old_tenant
+    end
+  end
+
+  def self.with_read_multiple(tenants, &block)
+    raise 'tenants must be Enumerable' unless tenants.is_a?(Enumerable)
+    raise 'Elements of tenants must be present' if tenants.blank? || tenants.any?(&:blank?)
+
+    begin
+      self.current_multiple_tenants = tenants
+      block.call
+    ensure
+      self.current_multiple_tenants = nil
     end
   end
 

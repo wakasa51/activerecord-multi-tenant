@@ -201,10 +201,14 @@ module MultiTenant
     private
 
     def tenant_arel
-      if defined?(Arel::Nodes::Quoted)
-        @tenant_attribute.eq(Arel::Nodes::Quoted.new(MultiTenant.current_tenant_id))
+      if MultiTenant.with_multiple_tenants_read_only_mode_enabled?
+        @tenant_attribute.in(MultiTenant.current_multiple_tenants.map(&:id))
       else
-        @tenant_attribute.eq(MultiTenant.current_tenant_id)
+        if defined?(Arel::Nodes::Quoted)
+          @tenant_attribute.eq(Arel::Nodes::Quoted.new(MultiTenant.current_tenant_id))
+        else
+          @tenant_attribute.eq(MultiTenant.current_tenant_id)
+        end
       end
     end
   end
@@ -273,6 +277,12 @@ module MultiTenant
       super(arel, name, binds)
     end
   end
+
+  module ReadOnlyMode
+    def readonly?
+      MultiTenant.with_multiple_tenants_read_only_mode_enabled? || super
+    end
+  end
 end
 
 require 'active_record/connection_adapters/abstract_adapter'
@@ -297,7 +307,7 @@ module ActiveRecord
           context.unhandled_relations.each do |relation|
             model = MultiTenant.multi_tenant_model_for_table(relation.arel_table.table_name)
 
-            if MultiTenant.current_tenant_id
+            if MultiTenant.current_tenant_id || MultiTenant.with_multiple_tenants_read_only_mode_enabled?
               enforcement_clause = MultiTenant::TenantEnforcementClause.new(relation.arel_table[model.partition_key])
               case node
               when Arel::Nodes::Join # Arel::Nodes::OuterJoin, Arel::Nodes::RightOuterJoin, Arel::Nodes::FullOuterJoin
